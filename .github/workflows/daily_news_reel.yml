@@ -23,25 +23,26 @@ jobs:
       - name: Installa dipendenze Python
         run: |
           pip install requests
+          pip install apify-client
       
-      - name: Verifica file presenti (debug)
-        run: |
-          echo "📁 Contenuto repository:"
-          ls -la
-      
-      - name: Raccogli notizie da Apify (o dati esempio)
+      - name: Raccogli notizie gaming con Apify (ultimi 7 giorni)
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: |
-          python fetch_news.py
+          python fetch_news_apify.py
       
-      - name: Mostra anteprima notizie (debug)
+      - name: Verifica file generati
         run: |
+          echo "📁 File presenti dopo la raccolta:"
+          ls -la
+          echo ""
           if [ -f news_data.json ]; then
-            echo "📰 Notizie raccolte:"
-            cat news_data.json | python -c "import sys, json; data=json.load(sys.stdin); print(f'Trovate {len(data)} notizie'); [print(f'- {n.get(\"title\",\"\")[:80]}') for n in data[:3]]"
+            echo "✅ news_data.json trovato!"
+            echo "📰 Prime 3 notizie:"
+            cat news_data.json | python -c "import sys, json; data=json.load(sys.stdin); [print(f'- {n.get(\"title\",\"\")[:80]}') for n in data[:3]]"
           else
-            echo "⚠️ Nessun file news_data.json trovato"
+            echo "❌ news_data.json NON TROVATO!"
+            exit 1
           fi
       
       - name: Genera script per Pippit AI
@@ -49,16 +50,14 @@ jobs:
           python -c "
           import json
           
-          # Leggi le notizie
           with open('news_data.json', 'r', encoding='utf-8') as f:
               news = json.load(f)
           
-          # Crea script per il reel
           script = '🎮 NOTIZIE GAMING DEL GIORNO 🎮\n\n'
           for i, item in enumerate(news[:3], 1):
               title = item.get('title', 'Notizia senza titolo')
-              desc = item.get('description', '')[:120]
-              source = item.get('source', {}).get('name', '')
+              desc = item.get('description', item.get('snippet', ''))[:120]
+              source = item.get('source', {}).get('name', item.get('sourceName', ''))
               
               script += f'{i}. {title}\n'
               if desc:
@@ -69,7 +68,6 @@ jobs:
           
           script += '📱 Seguimi per altre notizie dal mondo del gaming!'
           
-          # Salva lo script
           with open('pippit_script.txt', 'w', encoding='utf-8') as f:
               f.write(script)
           
@@ -78,7 +76,6 @@ jobs:
           print('ANTEPRIMA SCRIPT:')
           print('='*50)
           print(script)
-          print('='*50)
           "
       
       - name: Salva output come artifact
@@ -88,5 +85,4 @@ jobs:
           path: |
             news_data.json
             pippit_script.txt
-            fetch_news.py
           retention-days: 7
