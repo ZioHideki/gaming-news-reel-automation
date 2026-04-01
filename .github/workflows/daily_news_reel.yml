@@ -28,16 +28,8 @@ jobs:
         run: |
           echo "📁 Contenuto repository:"
           ls -la
-          echo ""
-          echo "📄 Contenuto fetch_news.py:"
-          cat fetch_news.py || echo "File non trovato!"
       
-      - name: Test esecuzione Python (debug)
-        run: |
-          python -c "import requests; print('✅ requests importata con successo')"
-          python -c "import json; print('✅ json importato')"
-      
-      - name: Raccogli notizie da Apify
+      - name: Raccogli notizie da Apify (o dati esempio)
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: |
@@ -52,11 +44,49 @@ jobs:
             echo "⚠️ Nessun file news_data.json trovato"
           fi
       
+      - name: Genera script per Pippit AI
+        run: |
+          python -c "
+          import json
+          
+          # Leggi le notizie
+          with open('news_data.json', 'r', encoding='utf-8') as f:
+              news = json.load(f)
+          
+          # Crea script per il reel
+          script = '🎮 NOTIZIE GAMING DEL GIORNO 🎮\n\n'
+          for i, item in enumerate(news[:3], 1):
+              title = item.get('title', 'Notizia senza titolo')
+              desc = item.get('description', '')[:120]
+              source = item.get('source', {}).get('name', '')
+              
+              script += f'{i}. {title}\n'
+              if desc:
+                  script += f'{desc}\n'
+              if source:
+                  script += f'Fonte: {source}\n'
+              script += '\n'
+          
+          script += '📱 Seguimi per altre notizie dal mondo del gaming!'
+          
+          # Salva lo script
+          with open('pippit_script.txt', 'w', encoding='utf-8') as f:
+              f.write(script)
+          
+          print('✅ Script per Pippit AI generato in pippit_script.txt')
+          print('\n' + '='*50)
+          print('ANTEPRIMA SCRIPT:')
+          print('='*50)
+          print(script)
+          print('='*50)
+          "
+      
       - name: Salva output come artifact
         uses: actions/upload-artifact@v4
         with:
           name: daily-gaming-news
           path: |
             news_data.json
+            pippit_script.txt
             fetch_news.py
           retention-days: 7
