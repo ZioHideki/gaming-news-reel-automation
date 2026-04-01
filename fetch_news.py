@@ -36,6 +36,7 @@ def fetch_gaming_news():
             
             if response.status_code == 201:
                 run_data = response.json()
+                # L'ID del run è in run_data['data']['id']
                 run_id = run_data.get("data", {}).get("id")
                 
                 if run_id:
@@ -43,16 +44,17 @@ def fetch_gaming_news():
                     
                     # 2. Attendi il completamento
                     print("⏳ Attendiamo il completamento del run...")
-                    max_attempts = 30  # massimo 30 tentativi
+                    max_attempts = 30
                     attempt = 0
                     run_status = "RUNNING"
                     
-                    while run_status not in ["SUCCEEDED", "FAILED", "ABORTED"] and attempt < max_attempts:
-                        time.sleep(5)  # aspetta 5 secondi
+                    while run_status not in ["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"] and attempt < max_attempts:
+                        time.sleep(5)
                         attempt += 1
                         
+                        # URL corretto per ottenere lo stato del run
                         status_response = requests.get(
-                            f"https://api.apify.com/v2/acts/runs/{run_id}",
+                            f"https://api.apify.com/v2/actor-runs/{run_id}",
                             headers=headers,
                             timeout=30
                         )
@@ -61,29 +63,30 @@ def fetch_gaming_news():
                             run_status = status_response.json().get("data", {}).get("status", "RUNNING")
                             print(f"   Tentativo {attempt}: stato = {run_status}")
                         else:
-                            print(f"   ⚠️ Impossibile ottenere stato: {status_response.status_code}")
+                            print(f"   ⚠️ Errore stato {status_response.status_code}")
+                            # Se non riusciamo a ottenere lo stato, proviamo a leggere i dataset comunque
                             break
                     
-                    # 3. Recupera i risultati se completato con successo
-                    if run_status == "SUCCEEDED":
-                        print("✅ Run completato! Recupero i risultati...")
-                        results_response = requests.get(
-                            f"https://api.apify.com/v2/acts/runs/{run_id}/dataset/items",
-                            headers=headers,
-                            timeout=30
-                        )
-                        
-                        if results_response.status_code == 200:
-                            articles = results_response.json()
-                            print(f"✅ Apify: trovate {len(articles)} notizie")
-                        else:
-                            print(f"⚠️ Errore nel recupero risultati: {results_response.status_code}")
+                    # 3. Recupera i risultati (anche se lo stato non è stato verificato)
+                    print("📥 Recupero i risultati...")
+                    results_response = requests.get(
+                        f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
+                        headers=headers,
+                        timeout=30
+                    )
+                    
+                    if results_response.status_code == 200:
+                        articles = results_response.json()
+                        print(f"✅ Apify: trovate {len(articles)} notizie")
                     else:
-                        print(f"⚠️ Run non completato con successo. Stato finale: {run_status}")
+                        print(f"⚠️ Errore nel recupero risultati: {results_response.status_code}")
+                        print(f"   Risposta: {results_response.text[:200]}")
                 else:
                     print("⚠️ Nessun run_id ottenuto")
+                    print(f"   Risposta: {response.text[:200]}")
             else:
                 print(f"⚠️ Apify risponde con status {response.status_code}")
+                print(f"   Risposta: {response.text[:200]}")
                 
         except Exception as e:
             print(f"⚠️ Apify non disponibile: {e}")
@@ -97,7 +100,7 @@ def fetch_gaming_news():
             {
                 "title": "Nintendo annuncia nuovi giochi per Switch 2",
                 "source": {"name": "IGN Italia"},
-                "description": "Durante il Nintendo Direct di aprile, la casa di Kyoto ha svelato tre nuovi titoli in arrivo nel 2026: un nuovo Mario 3D, Zelda spin-off e Metroid Prime 4.",
+                "description": "Durante il Nintendo Direct di aprile, la casa di Kyoto ha svelato tre nuovi titoli in arrivo nel 2026.",
                 "url": "https://www.ign.com/nintendo",
                 "category": "gaming"
             },
@@ -111,14 +114,14 @@ def fetch_gaming_news():
             {
                 "title": "Nuovo aggiornamento gratuito per Cyberpunk 2077",
                 "source": {"name": "Kotaku"},
-                "description": "CD Projekt Red rilascia la patch 2.5 con nuove missioni, miglioramenti grafici per PS5 Pro e la tanto attesa modalità foto potenziata.",
+                "description": "CD Projekt Red rilascia la patch 2.5 con nuove missioni e miglioramenti grafici.",
                 "url": "https://www.kotaku.com/cyberpunk",
                 "category": "gaming"
             },
             {
                 "title": "I campionati mondiali di League of Legends tornano in Europa",
                 "source": {"name": "Esports Insider"},
-                "description": "Riot Games ha annunciato che i Worlds 2026 si terranno in Italia (Milano) e Francia (Parigi).",
+                "description": "Riot Games ha annunciato che i Worlds 2026 si terranno in Italia e Francia.",
                 "url": "https://www.esportsinsider.com/lol",
                 "category": "esports"
             },
