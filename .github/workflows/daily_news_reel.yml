@@ -2,13 +2,14 @@ name: Daily Gaming News Reel
 
 on:
   schedule:
-    # Esegue ogni giorno alle 8:00 UTC
     - cron: '0 8 * * *'
-  workflow_dispatch:  # Permette esecuzione manuale dal pulsante "Run workflow"
+  workflow_dispatch:
 
 jobs:
   generate-reel:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Forza Node.js 24 per rimuovere l'avviso
     
     steps:
       - name: Checkout repository
